@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription: any = event.data.object
         const userId = subscription.metadata.userId
 
         if (userId) {
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription: any = event.data.object
         const userId = subscription.metadata.userId
 
         if (userId) {

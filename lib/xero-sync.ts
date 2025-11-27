@@ -12,7 +12,7 @@ export async function syncXeroTransactions(userId: string) {
     throw new Error('Xero not connected')
   }
 
-  let xeroClient = await getXeroClient(user.xeroAccessToken, user.xeroRefreshToken)
+  let xeroClient = await getXeroClient(user.xeroAccessToken!, user.xeroRefreshToken!) // Non-null assertion: already checked at line 11
 
   // Check if token expired and refresh if needed
   if (user.xeroTokenExpiry && new Date() > user.xeroTokenExpiry) {

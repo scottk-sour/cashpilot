@@ -12,7 +12,7 @@ export async function syncQuickBooksTransactions(userId: string) {
     throw new Error('QuickBooks not connected')
   }
 
-  let accessToken = user.qbAccessToken
+  let accessToken = user.qbAccessToken! // Non-null assertion: already checked at line 11
 
   // Check if token expired and refresh if needed
   if (user.qbTokenExpiry && new Date() > user.qbTokenExpiry) {

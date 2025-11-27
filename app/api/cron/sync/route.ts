@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { syncXeroTransactions } from '@/lib/xero-sync'
@@ -7,8 +9,6 @@ import { generateForecast } from '@/lib/forecasting'
 // This endpoint is called by Vercel Cron or external cron service
 // Add to vercel.json: { "crons": [{ "path": "/api/cron/sync", "schedule": "0 6 * * *" }] }
 
-// Force dynamic rendering - dont try to evaluate at build time
-export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
   // Verify cron secret

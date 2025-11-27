@@ -1,11 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { sendAllWeeklyDigests } from '@/lib/email/send-alerts'
 
 // Weekly digest cron - runs every Monday at 8am
 // Add to vercel.json: { "crons": [{ "path": "/api/cron/digest", "schedule": "0 8 * * 1" }] }
 
-// Force dynamic rendering - dont try to evaluate at build time
-export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
   // Verify cron secret

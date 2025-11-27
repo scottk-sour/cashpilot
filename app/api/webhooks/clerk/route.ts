@@ -1,6 +1,6 @@
-import { Webhook } from 'svix'
-// Force dynamic rendering
 export const dynamic = 'force-dynamic'
+
+import { Webhook } from 'svix'
 
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'

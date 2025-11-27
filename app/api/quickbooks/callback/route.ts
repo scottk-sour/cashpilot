@@ -1,11 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { oauthClient } from '@/lib/quickbooks'
 import { prisma } from '@/lib/db'
 import { authRateLimiter, rateLimit } from '@/lib/rate-limit'
 
-// Force dynamic rendering - dont try to evaluate at build time
-export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
   // Apply rate limiting

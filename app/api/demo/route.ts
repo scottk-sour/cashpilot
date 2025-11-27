@@ -1,7 +1,6 @@
-import { auth } from '@clerk/nextjs/server'
-// Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
+import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { generateDemoData, clearDemoData } from '@/lib/demo-data'

@@ -3,6 +3,9 @@ import { xero } from '@/lib/xero'
 import { NextResponse } from 'next/server'
 import { authRateLimiter, rateLimit } from '@/lib/rate-limit'
 
+// Force dynamic rendering - dont try to evaluate at build time
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: Request) {
   // Apply rate limiting
   const rateLimitResult = await rateLimit(req, authRateLimiter)

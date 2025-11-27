@@ -2,20 +2,16 @@ import { XeroClient } from 'xero-node'
 
 // Lazy initialize to avoid build-time errors when env vars aren't set
 let xeroInstance: XeroClient | null = null
+let initError: Error | null = null
 
 function getXeroConfig() {
-  const clientId = process.env.XERO_CLIENT_ID || ''
-  const clientSecret = process.env.XERO_CLIENT_SECRET || ''
-  const redirectUri = process.env.XERO_REDIRECT_URI || 'http://localhost:3000/api/xero/callback'
+  const clientId = process.env.XERO_CLIENT_ID
+  const clientSecret = process.env.XERO_CLIENT_SECRET
+  const redirectUri = process.env.XERO_REDIRECT_URI
 
-  if (!clientId || !clientSecret) {
-    // Return minimal config for build time - will fail if actually used
-    return {
-      clientId: 'build-time-placeholder',
-      clientSecret: 'build-time-placeholder',
-      redirectUris: [redirectUri],
-      scopes: 'openid profile email accounting.transactions.read offline_access'.split(' '),
-    }
+  // Check if we're in a build context (no credentials available)
+  if (!clientId || !clientSecret || !redirectUri) {
+    return null
   }
 
   return {
@@ -27,10 +23,32 @@ function getXeroConfig() {
 }
 
 export function getXeroInstance(): XeroClient {
-  if (!xeroInstance) {
-    xeroInstance = new XeroClient(getXeroConfig())
+  // If we already tried and failed, throw the cached error
+  if (initError) {
+    throw initError
   }
-  return xeroInstance
+
+  // If already initialized, return it
+  if (xeroInstance) {
+    return xeroInstance
+  }
+
+  // Try to initialize
+  const config = getXeroConfig()
+
+  if (!config) {
+    const error = new Error('Xero environment variables (XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_REDIRECT_URI) are not set')
+    initError = error
+    throw error
+  }
+
+  try {
+    xeroInstance = new XeroClient(config)
+    return xeroInstance
+  } catch (error) {
+    initError = error as Error
+    throw error
+  }
 }
 
 export const xero = getXeroInstance
@@ -38,8 +56,7 @@ export const xero = getXeroInstance
 export async function getXeroClient(accessToken: string, refreshToken: string) {
   const config = getXeroConfig()
 
-  // Runtime check - throw if using placeholder values
-  if (config.clientId === 'build-time-placeholder') {
+  if (!config) {
     throw new Error('Xero environment variables (XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_REDIRECT_URI) are not set')
   }
 

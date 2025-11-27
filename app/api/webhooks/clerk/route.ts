@@ -1,4 +1,7 @@
 import { Webhook } from 'svix'
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/db'

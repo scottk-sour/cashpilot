@@ -1,4 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiRateLimiter, rateLimit } from '@/lib/rate-limit'

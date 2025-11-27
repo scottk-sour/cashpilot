@@ -3,13 +3,21 @@ import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import Stripe from 'stripe'
+import { webhookRateLimiter, rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, webhookRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
   const body = await req.text()
   const headersList = await headers()
   const signature = headersList.get('stripe-signature')
 
   if (!signature) {
+    logger.warn('Stripe webhook received without signature')
     return new NextResponse('Missing signature', { status: 400 })
   }
 
@@ -22,7 +30,7 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     )
   } catch (err) {
-    console.error('Webhook signature verification failed:', err)
+    logger.error('Stripe webhook signature verification failed', err)
     return new NextResponse('Invalid signature', { status: 400 })
   }
 
@@ -108,9 +116,10 @@ export async function POST(req: Request) {
       }
     }
 
+    logger.info('Stripe webhook processed successfully', { eventType: event.type })
     return new NextResponse('OK', { status: 200 })
   } catch (error) {
-    console.error('Webhook handler error:', error)
+    logger.error('Stripe webhook handler error', error, { eventType: event?.type })
     return new NextResponse('Webhook handler failed', { status: 500 })
   }
 }

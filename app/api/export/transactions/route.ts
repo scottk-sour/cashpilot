@@ -1,8 +1,15 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { apiRateLimiter, rateLimit } from '@/lib/rate-limit'
 
 export async function GET(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, apiRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
+
   const { userId } = await auth()
 
   if (!userId) {
@@ -29,12 +36,18 @@ export async function GET(req: Request) {
     const since = new Date()
     since.setMonth(since.getMonth() - months)
 
+    // Add pagination support to prevent memory issues with large datasets
+    const limit = parseInt(url.searchParams.get('limit') || '10000')
+    const offset = parseInt(url.searchParams.get('offset') || '0')
+
     const transactions = await prisma.transaction.findMany({
       where: {
         userId: user.id,
         date: { gte: since },
       },
       orderBy: { date: 'desc' },
+      take: Math.min(limit, 10000), // Max 10k records per export
+      skip: offset,
     })
 
     const csv = generateTransactionsCSV(transactions)

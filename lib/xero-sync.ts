@@ -1,5 +1,7 @@
 import { getXeroClient } from './xero'
 import { prisma } from './db'
+import { retryWithBackoff } from './retry'
+import { logger } from './logger'
 
 export async function syncXeroTransactions(userId: string) {
   const user = await prisma.user.findUnique({
@@ -14,7 +16,17 @@ export async function syncXeroTransactions(userId: string) {
 
   // Check if token expired and refresh if needed
   if (user.xeroTokenExpiry && new Date() > user.xeroTokenExpiry) {
-    const newTokenSet = await xeroClient.refreshToken()
+    // Retry token refresh with exponential backoff
+    const newTokenSet = await retryWithBackoff(
+      () => xeroClient.refreshToken(),
+      {
+        maxAttempts: 3,
+        initialDelay: 1000,
+        onRetry: (error, attempt) => {
+          logger.warn('Retrying Xero token refresh', { userId, attempt, error: error.message })
+        },
+      }
+    )
 
     await prisma.user.update({
       where: { id: userId },
@@ -38,13 +50,24 @@ export async function syncXeroTransactions(userId: string) {
   const since = new Date()
   since.setMonth(since.getMonth() - 12)
 
-  const response = await xeroClient.accountingApi.getBankTransactions(
-    user.xeroTenantId!,
-    undefined, // If-Modified-Since
-    `Date >= DateTime(${since.getFullYear()}, ${since.getMonth() + 1}, ${since.getDate()})`,
-    undefined, // order
-    undefined, // page
-    100 // pageSize
+  // Retry API call with exponential backoff
+  const response = await retryWithBackoff(
+    () =>
+      xeroClient.accountingApi.getBankTransactions(
+        user.xeroTenantId!,
+        undefined, // If-Modified-Since
+        `Date >= DateTime(${since.getFullYear()}, ${since.getMonth() + 1}, ${since.getDate()})`,
+        undefined, // order
+        undefined, // page
+        100 // pageSize
+      ),
+    {
+      maxAttempts: 3,
+      initialDelay: 2000,
+      onRetry: (error, attempt) => {
+        logger.warn('Retrying Xero getBankTransactions', { userId, attempt, error: error.message })
+      },
+    }
   )
 
   const transactions = response.body.bankTransactions || []

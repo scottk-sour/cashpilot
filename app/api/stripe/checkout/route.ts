@@ -2,13 +2,28 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
+import { apiRateLimiter, rateLimit } from '@/lib/rate-limit'
+import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const PRICES = {
   GROWTH: process.env.STRIPE_GROWTH_PRICE_ID!,
   PRO: process.env.STRIPE_PRO_PRICE_ID!,
 }
 
+// Input validation schema
+const checkoutSchema = z.object({
+  priceId: z.string().optional(),
+  plan: z.enum(['GROWTH', 'PRO']),
+})
+
 export async function POST(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, apiRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
+
   const { userId } = await auth()
 
   if (!userId) {
@@ -16,7 +31,24 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { priceId, plan } = await req.json()
+    // Validate request body
+    const body = await req.json()
+    const validation = checkoutSchema.safeParse(body)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid request',
+          details: validation.error.issues.map((issue) => ({
+            field: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
+
+    const { priceId, plan } = validation.data
 
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
@@ -70,7 +102,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error('Stripe checkout error:', error)
+    logger.error('Failed to create Stripe checkout session', error, { userId })
     return new NextResponse('Failed to create checkout session', { status: 500 })
   }
 }

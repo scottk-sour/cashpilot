@@ -1,8 +1,15 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { apiRateLimiter, rateLimit } from '@/lib/rate-limit'
 
 export async function GET(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, apiRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
+
   const { userId } = await auth()
 
   if (!userId) {

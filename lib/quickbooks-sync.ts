@@ -1,5 +1,7 @@
 import { prisma } from './db'
 import { makeQuickBooksRequest, refreshQuickBooksToken } from './quickbooks'
+import { retryWithBackoff } from './retry'
+import { logger } from './logger'
 
 export async function syncQuickBooksTransactions(userId: string) {
   const user = await prisma.user.findUnique({
@@ -14,7 +16,17 @@ export async function syncQuickBooksTransactions(userId: string) {
 
   // Check if token expired and refresh if needed
   if (user.qbTokenExpiry && new Date() > user.qbTokenExpiry) {
-    const newTokens = await refreshQuickBooksToken(user.qbRefreshToken)
+    // Retry token refresh with exponential backoff
+    const newTokens = await retryWithBackoff(
+      () => refreshQuickBooksToken(user.qbRefreshToken),
+      {
+        maxAttempts: 3,
+        initialDelay: 1000,
+        onRetry: (error, attempt) => {
+          logger.warn('Retrying QuickBooks token refresh', { userId, attempt, error: error.message })
+        },
+      }
+    )
 
     await prisma.user.update({
       where: { id: userId },
@@ -33,24 +45,36 @@ export async function syncQuickBooksTransactions(userId: string) {
   since.setMonth(since.getMonth() - 12)
   const sinceStr = since.toISOString().split('T')[0]
 
-  // Query purchases (expenses)
+  // Query purchases (expenses) with retry
   const purchasesQuery = encodeURIComponent(
     `SELECT * FROM Purchase WHERE TxnDate >= '${sinceStr}'`
   )
-  const purchasesData = await makeQuickBooksRequest(
-    accessToken,
-    user.qbRealmId,
-    `query?query=${purchasesQuery}`
+  const purchasesData = await retryWithBackoff(
+    () =>
+      makeQuickBooksRequest(accessToken, user.qbRealmId!, `query?query=${purchasesQuery}`),
+    {
+      maxAttempts: 3,
+      initialDelay: 2000,
+      onRetry: (error, attempt) => {
+        logger.warn('Retrying QuickBooks purchases query', { userId, attempt, error: error.message })
+      },
+    }
   )
 
-  // Query invoices (income)
+  // Query invoices (income) with retry
   const invoicesQuery = encodeURIComponent(
     `SELECT * FROM Invoice WHERE TxnDate >= '${sinceStr}'`
   )
-  const invoicesData = await makeQuickBooksRequest(
-    accessToken,
-    user.qbRealmId,
-    `query?query=${invoicesQuery}`
+  const invoicesData = await retryWithBackoff(
+    () =>
+      makeQuickBooksRequest(accessToken, user.qbRealmId!, `query?query=${invoicesQuery}`),
+    {
+      maxAttempts: 3,
+      initialDelay: 2000,
+      onRetry: (error, attempt) => {
+        logger.warn('Retrying QuickBooks invoices query', { userId, attempt, error: error.message })
+      },
+    }
   )
 
   let syncedCount = 0

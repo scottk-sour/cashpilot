@@ -2,11 +2,19 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/db'
+import { webhookRateLimiter, rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, webhookRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
 
   if (!WEBHOOK_SECRET) {
+    logger.error('Missing CLERK_WEBHOOK_SECRET environment variable')
     throw new Error('Missing CLERK_WEBHOOK_SECRET')
   }
 
@@ -16,6 +24,7 @@ export async function POST(req: Request) {
   const svix_signature = headerPayload.get('svix-signature')
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
+    logger.warn('Clerk webhook received with missing svix headers')
     return new Response('Error: Missing svix headers', { status: 400 })
   }
 
@@ -32,7 +41,10 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as WebhookEvent
   } catch (err) {
-    console.error('Error verifying webhook:', err)
+    logger.error('Clerk webhook verification failed', err, {
+      svixId: svix_id,
+      svixTimestamp: svix_timestamp,
+    })
     return new Response('Error: Verification failed', { status: 400 })
   }
 

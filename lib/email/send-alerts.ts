@@ -1,8 +1,26 @@
 import { prisma } from '@/lib/db'
 import { sendEmail } from './resend'
 import { lowCashAlertTemplate, weeklyDigestTemplate } from './templates'
+import { logger } from '../logger'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://cashpilot.app'
+// Get app URL from environment - required for production
+function getAppUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL
+
+  if (!url) {
+    // In development, use localhost
+    if (process.env.NODE_ENV === 'development') {
+      return 'http://localhost:3000'
+    }
+    // In production, this should always be set
+    logger.error('NEXT_PUBLIC_APP_URL not set in production')
+    throw new Error('NEXT_PUBLIC_APP_URL must be set in production')
+  }
+
+  return url
+}
+
+const APP_URL = getAppUrl()
 
 export async function sendLowCashAlert(userId: string, alert: {
   weekLabel: string
@@ -110,7 +128,7 @@ export async function sendAllWeeklyDigests() {
       await sendWeeklyDigest(user.id)
       results.sent++
     } catch (error) {
-      console.error(`Failed to send digest to user ${user.id}:`, error)
+      logger.error(`Failed to send weekly digest`, error, { userId: user.id })
       results.failed++
     }
   }

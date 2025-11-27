@@ -2,8 +2,16 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
+import { apiRateLimiter, rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
-export async function POST() {
+export async function POST(req: Request) {
+  // Apply rate limiting
+  const rateLimitResult = await rateLimit(req, apiRateLimiter)
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response!
+  }
+
   const { userId } = await auth()
 
   if (!userId) {
@@ -27,7 +35,7 @@ export async function POST() {
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error('Stripe portal error:', error)
+    logger.error('Failed to create Stripe portal session', error, { userId })
     return new NextResponse('Failed to create portal session', { status: 500 })
   }
 }

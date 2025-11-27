@@ -191,9 +191,20 @@ cashpilot/
 
 ### Vercel (Recommended)
 
+**📖 [Complete Vercel Deployment Guide →](./VERCEL_SETUP.md)**
+
+The comprehensive guide includes:
+- ✅ Step-by-step deployment instructions
+- ✅ All required environment variables with descriptions
+- ✅ How to get API keys for all services
+- ✅ Webhook setup for Clerk and Stripe
+- ✅ Production checklist
+- ✅ Troubleshooting tips
+
+**Quick Steps:**
 1. Push to GitHub
 2. Import project in [vercel.com](https://vercel.com)
-3. Add all environment variables
+3. Add all environment variables (see guide)
 4. Deploy
 
 The `vercel.json` includes cron job configuration:

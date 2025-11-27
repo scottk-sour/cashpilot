@@ -44,7 +44,9 @@ export async function POST(req: Request) {
             ? session.subscription
             : session.subscription.id
 
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId)
+          // Stripe SDK returns the subscription directly
+          const subscription = subscriptionResponse as unknown as Stripe.Subscription
 
           const userId = subscription.metadata.userId
           const plan = subscription.metadata.plan
@@ -104,7 +106,9 @@ export async function POST(req: Request) {
             ? invoice.subscription
             : invoice.subscription.id
 
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId)
+          // Stripe SDK returns the subscription directly
+          const subscription = subscriptionResponse as unknown as Stripe.Subscription
           const userId = subscription.metadata.userId
 
           if (userId) {

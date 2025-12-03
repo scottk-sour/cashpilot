@@ -1,5 +1,6 @@
 import { prisma } from './db'
 import { startOfWeek, addWeeks, format } from 'date-fns'
+import { Prisma } from '@prisma/client'
 
 interface RecurringItem {
   category: string
@@ -82,7 +83,7 @@ export async function generateForecast(userId: string) {
   await prisma.forecast.create({
     data: {
       userId,
-      weeks,
+      weeks: weeks as unknown as Prisma.InputJsonValue,
       isActive: true,
     },
   })

@@ -53,6 +53,7 @@ export async function syncXeroTransactions(userId: string) {
   for (const txn of transactions) {
     const lineItems = txn.lineItems || []
     const amount = lineItems.reduce((sum, item) => sum + (item.lineAmount || 0), 0)
+    const txnType = String(txn.type) === 'SPEND' ? 'expense' : 'income'
 
     await prisma.transaction.upsert({
       where: {
@@ -67,8 +68,8 @@ export async function syncXeroTransactions(userId: string) {
         externalId: txn.bankTransactionID!,
         source: 'xero',
         date: new Date(txn.date!),
-        amount: Math.round(amount * 100), // Convert to pence
-        type: txn.type === 'SPEND' ? 'expense' : 'income',
+        amount: Math.round(amount * 100),
+        type: txnType,
         description: txn.reference || 'Unknown',
         contact: txn.contact?.name,
         category: categorizeTransaction(txn.reference || ''),
@@ -76,7 +77,7 @@ export async function syncXeroTransactions(userId: string) {
       update: {
         date: new Date(txn.date!),
         amount: Math.round(amount * 100),
-        type: txn.type === 'SPEND' ? 'expense' : 'income',
+        type: txnType,
         description: txn.reference || 'Unknown',
         contact: txn.contact?.name,
         category: categorizeTransaction(txn.reference || ''),

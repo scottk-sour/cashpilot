@@ -32,10 +32,10 @@ export async function POST(req: Request) {
         const session = event.data.object as Stripe.Checkout.Session
 
         if (session.mode === 'subscription' && session.subscription) {
-          const subscriptionResponse = await stripe.subscriptions.retrieve(
+          const subscription = await stripe.subscriptions.retrieve(
             session.subscription as string
-          )
-          const subscription = subscriptionResponse as Stripe.Subscription
+          ) as unknown as { id: string; metadata: { userId: string; plan: string }; current_period_end: number }
+          
           const userId = subscription.metadata.userId
           const plan = subscription.metadata.plan
 
@@ -53,15 +53,15 @@ export async function POST(req: Request) {
       }
 
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
-        const userId = subscription.metadata.userId
+        const sub = event.data.object as unknown as { metadata: { userId: string }; status: string; current_period_end: number }
+        const userId = sub.metadata.userId
 
         if (userId) {
           await prisma.user.update({
             where: { id: userId },
             data: {
-              planStatus: subscription.status === 'active' ? 'active' : subscription.status,
-              subscriptionEndsAt: new Date(subscription.current_period_end * 1000),
+              planStatus: sub.status === 'active' ? 'active' : sub.status,
+              subscriptionEndsAt: new Date(sub.current_period_end * 1000),
             },
           })
         }
@@ -69,8 +69,8 @@ export async function POST(req: Request) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription
-        const userId = subscription.metadata.userId
+        const sub = event.data.object as unknown as { metadata: { userId: string } }
+        const userId = sub.metadata.userId
 
         if (userId) {
           await prisma.user.update({
@@ -90,10 +90,10 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice
 
         if (invoice.subscription) {
-          const subscriptionResponse = await stripe.subscriptions.retrieve(
+          const subscription = await stripe.subscriptions.retrieve(
             invoice.subscription as string
-          )
-          const subscription = subscriptionResponse as Stripe.Subscription
+          ) as unknown as { metadata: { userId: string } }
+          
           const userId = subscription.metadata.userId
 
           if (userId) {

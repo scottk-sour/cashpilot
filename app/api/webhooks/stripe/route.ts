@@ -87,11 +87,11 @@ export async function POST(req: Request) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
+        const invoice = event.data.object as unknown as { subscription: string | null }
 
         if (invoice.subscription) {
           const subscription = await stripe.subscriptions.retrieve(
-            invoice.subscription as string
+            invoice.subscription
           ) as unknown as { metadata: { userId: string } }
           
           const userId = subscription.metadata.userId

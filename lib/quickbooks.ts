@@ -1,3 +1,4 @@
+// @ts-ignore
 import OAuthClient from 'intuit-oauth'
 
 const oauthClient = new OAuthClient({

@@ -1,6 +1,12 @@
 import { prisma } from './db'
 import { startOfWeek, addWeeks, format } from 'date-fns'
-import { Prisma } from '@prisma/client'
+
+interface TransactionData {
+  amount: number
+  type: string
+  category: string | null
+  contact: string | null
+}
 
 interface RecurringItem {
   category: string
@@ -33,17 +39,17 @@ export async function generateForecast(userId: string) {
 
   // Calculate current cash from transaction history
   // In production, you'd get this from Xero bank balance
-  const currentCash = transactions.reduce((sum, txn) => {
+  const currentCash = transactions.reduce((sum: number, txn: TransactionData) => {
     return sum + (txn.type === 'income' ? txn.amount : -txn.amount)
   }, 0)
 
   // Identify recurring transactions
   const recurringIncome = identifyRecurring(
-    transactions.filter((t) => t.type === 'income'),
+    transactions.filter((t: TransactionData) => t.type === 'income'),
     'income'
   )
   const recurringExpenses = identifyRecurring(
-    transactions.filter((t) => t.type === 'expense'),
+    transactions.filter((t: TransactionData) => t.type === 'expense'),
     'expense'
   )
 
@@ -83,7 +89,7 @@ export async function generateForecast(userId: string) {
   await prisma.forecast.create({
     data: {
       userId,
-      weeks: weeks as unknown as Prisma.InputJsonValue,
+      weeks: JSON.parse(JSON.stringify(weeks)),
       isActive: true,
     },
   })

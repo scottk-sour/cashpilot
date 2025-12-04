@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error intuit-oauth has no type declarations
 import OAuthClient from 'intuit-oauth'
 
 const oauthClient = new OAuthClient({

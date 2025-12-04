@@ -153,7 +153,7 @@ export default async function DashboardPage({
       {/* Bottom section */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Upcoming Payments */}
-        <UpcomingPayments userId={user.id} />
+        <UpcomingPayments />
 
         {/* Quick Actions */}
         <div className="space-y-4">

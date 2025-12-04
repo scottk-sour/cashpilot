@@ -1,6 +1,6 @@
 import { prisma } from './db'
 import { generateForecast } from './forecasting'
-import { addDays, subDays, format } from 'date-fns'
+import { subDays } from 'date-fns'
 
 // Generate realistic sample data for demo/testing
 export async function generateDemoData(userId: string) {

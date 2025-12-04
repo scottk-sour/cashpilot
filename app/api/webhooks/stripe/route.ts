@@ -1,8 +1,8 @@
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
-import Stripe from 'stripe'
+import type Stripe from 'stripe'
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -14,8 +14,10 @@ export async function POST(req: Request) {
   }
 
   let event: Stripe.Event
+  let stripe: Stripe
 
   try {
+    stripe = await getStripe()
     event = stripe.webhooks.constructEvent(
       body,
       signature,

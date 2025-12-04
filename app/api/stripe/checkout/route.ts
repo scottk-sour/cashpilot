@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
+import { checkoutSchema, validateBody } from '@/lib/validation'
 
 const PRICES = {
   GROWTH: process.env.STRIPE_GROWTH_PRICE_ID!,
@@ -16,8 +17,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Validate input
+    const validation = await validateBody(req, checkoutSchema)
+    if (!validation.success) {
+      return new NextResponse(validation.error, { status: 400 })
+    }
+    const { priceId, plan } = validation.data
+
     const stripe = await getStripe()
-    const { priceId, plan } = await req.json()
 
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },

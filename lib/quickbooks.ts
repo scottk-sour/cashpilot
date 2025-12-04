@@ -1,14 +1,14 @@
-// @ts-expect-error intuit-oauth has no type declarations
-import OAuthClient from 'intuit-oauth'
+// Use dynamic import to prevent intuit-oauth from being loaded at build time
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let oauthClientInstance: any = null
 
-// Lazy-load QuickBooks OAuth client to avoid errors at build time
-let oauthClientInstance: OAuthClient | null = null
-
-function getOAuthClient(): OAuthClient {
+export async function getOAuthClient() {
   if (!oauthClientInstance) {
     if (!process.env.QUICKBOOKS_CLIENT_ID || !process.env.QUICKBOOKS_CLIENT_SECRET) {
       throw new Error('QuickBooks credentials not configured')
     }
+    // @ts-expect-error intuit-oauth has no type declarations
+    const OAuthClient = (await import('intuit-oauth')).default
     oauthClientInstance = new OAuthClient({
       clientId: process.env.QUICKBOOKS_CLIENT_ID,
       clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET,
@@ -18,13 +18,6 @@ function getOAuthClient(): OAuthClient {
   }
   return oauthClientInstance
 }
-
-// Backwards compatibility export
-export const oauthClient = new Proxy({} as OAuthClient, {
-  get(_target, prop) {
-    return getOAuthClient()[prop as keyof OAuthClient]
-  }
-})
 
 export function getQuickBooksClient(accessToken: string, realmId: string) {
   return {
@@ -37,7 +30,7 @@ export function getQuickBooksClient(accessToken: string, realmId: string) {
 }
 
 export async function refreshQuickBooksToken(refreshToken: string) {
-  const client = getOAuthClient()
+  const client = await getOAuthClient()
   const authResponse = await client.refreshUsingToken(refreshToken)
   return authResponse.getJson()
 }

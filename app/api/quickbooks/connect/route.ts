@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { oauthClient } from '@/lib/quickbooks'
+import { getOAuthClient } from '@/lib/quickbooks'
 
 export async function GET() {
   const { userId } = await auth()
@@ -10,6 +10,7 @@ export async function GET() {
   }
 
   try {
+    const oauthClient = await getOAuthClient()
     const authUri = oauthClient.authorizeUri({
       scope: [
         'com.intuit.quickbooks.accounting',

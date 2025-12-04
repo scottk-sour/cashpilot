@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { oauthClient } from '@/lib/quickbooks'
+import { getOAuthClient } from '@/lib/quickbooks'
 import { prisma } from '@/lib/db'
 
 export async function GET(req: Request) {
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   try {
     const url = new URL(req.url)
+    const oauthClient = await getOAuthClient()
     const authResponse = await oauthClient.createToken(url.href)
     const tokens = authResponse.getJson()
 

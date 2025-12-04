@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { CashBufferEditor } from '@/components/settings/cash-buffer-editor'
 
 export default async function SettingsPage() {
   const { userId } = await auth()
@@ -42,25 +43,7 @@ export default async function SettingsPage() {
       </div>
 
       {/* Cash Buffer Setting */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cash Safety Buffer</CardTitle>
-          <CardDescription>
-            Set the minimum cash balance you want to maintain. You&apos;ll receive
-            alerts when projections fall below this amount.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <span className="text-2xl font-bold">
-              £{(user.cashBuffer / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}
-            </span>
-            <Button variant="outline" size="sm">
-              Edit
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <CashBufferEditor initialValue={user.cashBuffer} />
 
       {/* Connected Accounts */}
       <Card>
@@ -112,12 +95,29 @@ export default async function SettingsPage() {
               </div>
               <div>
                 <p className="font-medium">QuickBooks</p>
-                <p className="text-sm text-gray-500">Coming soon</p>
+                {user.qbConnectedAt ? (
+                  <p className="text-sm text-green-600">
+                    Connected{' '}
+                    {user.qbConnectedAt.toLocaleDateString('en-GB', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">Not connected</p>
+                )}
               </div>
             </div>
-            <Button variant="outline" size="sm" disabled>
-              Connect
-            </Button>
+            {user.qbConnectedAt ? (
+              <Button variant="outline" size="sm">
+                Disconnect
+              </Button>
+            ) : (
+              <Button size="sm" asChild>
+                <a href="/api/quickbooks/connect">Connect</a>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

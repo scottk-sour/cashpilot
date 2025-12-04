@@ -18,6 +18,8 @@ interface Scenario {
 }
 
 interface WeekData {
+  weekStart: string
+  weekEnd: string
   weekLabel: string
   projected: number
   income: number

@@ -9,6 +9,8 @@ import { ConnectAccounting } from '@/components/dashboard/connect-accounting'
 import { Button } from '@/components/ui/button'
 import { generateForecast } from '@/lib/forecasting'
 import { syncXeroTransactions } from '@/lib/xero-sync'
+import { syncQuickBooksTransactions } from '@/lib/quickbooks-sync'
+import { SyncButton } from '@/components/dashboard/sync-button'
 
 export default async function DashboardPage({
   searchParams,
@@ -52,6 +54,16 @@ export default async function DashboardPage({
       await generateForecast(user.id)
     } catch (error) {
       console.error('Error syncing Xero:', error)
+    }
+  }
+
+  // If QuickBooks just connected, sync transactions and generate forecast
+  if (params.quickbooks === 'connected') {
+    try {
+      await syncQuickBooksTransactions(user.id)
+      await generateForecast(user.id)
+    } catch (error) {
+      console.error('Error syncing QuickBooks:', error)
     }
   }
 
@@ -116,13 +128,7 @@ export default async function DashboardPage({
             })}
           </p>
         </div>
-        {!isDemo && (
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <a href="/api/xero/connect">Sync Data</a>
-            </Button>
-          </div>
-        )}
+        {!isDemo && <SyncButton />}
       </div>
 
       {/* Checkout success message */}
@@ -183,21 +189,29 @@ export default async function DashboardPage({
                 </div>
               </a>
             </Button>
-            <Button variant="outline" className="justify-start h-auto py-3" disabled>
-              <div className="text-left">
-                <p className="font-medium">Scenario Planning</p>
-                <p className="text-sm text-muted-foreground">
-                  Coming in Growth plan
-                </p>
-              </div>
+            <Button variant="outline" className="justify-start h-auto py-3" asChild>
+              <a href="/scenarios">
+                <div className="text-left">
+                  <p className="font-medium">Scenario Planning</p>
+                  <p className="text-sm text-muted-foreground">
+                    {user.plan === 'GROWTH' || user.plan === 'PRO'
+                      ? 'Model what-if scenarios'
+                      : 'Available in Growth plan'}
+                  </p>
+                </div>
+              </a>
             </Button>
-            <Button variant="outline" className="justify-start h-auto py-3" disabled>
-              <div className="text-left">
-                <p className="font-medium">Export to Excel</p>
-                <p className="text-sm text-muted-foreground">
-                  Coming in Growth plan
-                </p>
-              </div>
+            <Button variant="outline" className="justify-start h-auto py-3" asChild>
+              <a href="/api/export/forecast">
+                <div className="text-left">
+                  <p className="font-medium">Export to Excel</p>
+                  <p className="text-sm text-muted-foreground">
+                    {user.plan === 'GROWTH' || user.plan === 'PRO'
+                      ? 'Download forecast data'
+                      : 'Available in Growth plan'}
+                  </p>
+                </div>
+              </a>
             </Button>
           </div>
         </div>

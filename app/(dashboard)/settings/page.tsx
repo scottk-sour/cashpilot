@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,12 +11,25 @@ export default async function SettingsPage() {
     redirect('/sign-in')
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { clerkId: userId },
   })
 
+  // Auto-create user if they exist in Clerk but not in the database
   if (!user) {
-    redirect('/sign-in')
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      redirect('/sign-in')
+    }
+
+    user = await prisma.user.create({
+      data: {
+        clerkId: userId,
+        email: clerkUser.emailAddresses[0]?.emailAddress || '',
+        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null,
+        imageUrl: clerkUser.imageUrl,
+      },
+    })
   }
 
   return (

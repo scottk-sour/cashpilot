@@ -1,14 +1,23 @@
-// @ts-ignore
-import OAuthClient from 'intuit-oauth'
+// Use dynamic import to prevent intuit-oauth from being loaded at build time
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let oauthClientInstance: any = null
 
-const oauthClient = new OAuthClient({
-  clientId: process.env.QUICKBOOKS_CLIENT_ID!,
-  clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET!,
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  redirectUri: process.env.QUICKBOOKS_REDIRECT_URI!,
-})
-
-export { oauthClient }
+export async function getOAuthClient() {
+  if (!oauthClientInstance) {
+    if (!process.env.QUICKBOOKS_CLIENT_ID || !process.env.QUICKBOOKS_CLIENT_SECRET) {
+      throw new Error('QuickBooks credentials not configured')
+    }
+    // @ts-expect-error intuit-oauth has no type declarations
+    const OAuthClient = (await import('intuit-oauth')).default
+    oauthClientInstance = new OAuthClient({
+      clientId: process.env.QUICKBOOKS_CLIENT_ID,
+      clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET,
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+      redirectUri: process.env.QUICKBOOKS_REDIRECT_URI || '',
+    })
+  }
+  return oauthClientInstance
+}
 
 export function getQuickBooksClient(accessToken: string, realmId: string) {
   return {
@@ -21,7 +30,8 @@ export function getQuickBooksClient(accessToken: string, realmId: string) {
 }
 
 export async function refreshQuickBooksToken(refreshToken: string) {
-  const authResponse = await oauthClient.refreshUsingToken(refreshToken)
+  const client = await getOAuthClient()
+  const authResponse = await client.refreshUsingToken(refreshToken)
   return authResponse.getJson()
 }
 

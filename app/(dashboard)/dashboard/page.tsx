@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { CashFlowChart } from '@/components/dashboard/cash-flow-chart'
@@ -21,12 +21,26 @@ export default async function DashboardPage({
     redirect('/sign-in')
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { clerkId: userId },
   })
 
+  // Auto-create user if they exist in Clerk but not in the database
+  // This handles cases where the Clerk webhook wasn't configured
   if (!user) {
-    redirect('/sign-in')
+    const clerkUser = await currentUser()
+    if (!clerkUser) {
+      redirect('/sign-in')
+    }
+
+    user = await prisma.user.create({
+      data: {
+        clerkId: userId,
+        email: clerkUser.emailAddresses[0]?.emailAddress || '',
+        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null,
+        imageUrl: clerkUser.imageUrl,
+      },
+    })
   }
 
   const params = await searchParams
@@ -153,7 +167,7 @@ export default async function DashboardPage({
       {/* Bottom section */}
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Upcoming Payments */}
-        <UpcomingPayments userId={user.id} />
+        <UpcomingPayments />
 
         {/* Quick Actions */}
         <div className="space-y-4">

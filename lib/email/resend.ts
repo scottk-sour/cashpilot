@@ -1,6 +1,17 @@
-import { Resend } from 'resend'
+// Use dynamic import to prevent Resend from being loaded at build time
+let resendInstance: InstanceType<typeof import('resend').Resend> | null = null
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+async function getResend() {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey || apiKey === 're_placeholder' || apiKey.startsWith('placeholder')) {
+      throw new Error('Resend API key not configured')
+    }
+    const { Resend } = await import('resend')
+    resendInstance = new Resend(apiKey)
+  }
+  return resendInstance
+}
 
 export async function sendEmail({
   to,
@@ -12,7 +23,8 @@ export async function sendEmail({
   html: string
 }) {
   try {
-    const { data, error } = await resend.emails.send({
+    const client = await getResend()
+    const { data, error } = await client.emails.send({
       from: 'CashPilot <alerts@cashpilot.app>',
       to,
       subject,

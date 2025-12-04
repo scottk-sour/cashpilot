@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 
 export async function POST() {
@@ -11,6 +11,7 @@ export async function POST() {
   }
 
   try {
+    const stripe = await getStripe()
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
     })

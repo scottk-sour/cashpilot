@@ -2,35 +2,23 @@
 
 import { Card } from '@/components/ui/card'
 
-interface UpcomingPaymentsProps {
-  userId: string
+interface Payment {
+  id: string
+  description: string
+  amount: number
+  dueDateLabel: string
+  category: string
 }
 
-export function UpcomingPayments({ userId }: UpcomingPaymentsProps) {
+// Demo payment data - in production this comes from the database
+const upcomingPayments: Payment[] = [
+  { id: '1', description: 'Monthly Payroll', amount: 4500000, dueDateLabel: 'Next week', category: 'payroll' },
+  { id: '2', description: 'Office Rent', amount: 250000, dueDateLabel: 'In 2 weeks', category: 'rent' },
+  { id: '3', description: 'VAT Payment', amount: 180000, dueDateLabel: 'In 3 weeks', category: 'tax' },
+]
+
+export function UpcomingPayments() {
   // In production, this would fetch upcoming bills from the database
-  const upcomingPayments = [
-    {
-      id: '1',
-      description: 'Monthly Payroll',
-      amount: 4500000, // in pence
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      category: 'payroll',
-    },
-    {
-      id: '2',
-      description: 'Office Rent',
-      amount: 250000,
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      category: 'rent',
-    },
-    {
-      id: '3',
-      description: 'VAT Payment',
-      amount: 180000,
-      dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-      category: 'tax',
-    },
-  ]
 
   return (
     <Card className="p-6">
@@ -44,12 +32,7 @@ export function UpcomingPayments({ userId }: UpcomingPaymentsProps) {
             <div>
               <p className="font-medium">{payment.description}</p>
               <p className="text-sm text-muted-foreground">
-                Due:{' '}
-                {payment.dueDate.toLocaleDateString('en-GB', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                Due: {payment.dueDateLabel}
               </p>
             </div>
             <div className="text-right">

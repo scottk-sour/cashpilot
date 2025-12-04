@@ -4,13 +4,21 @@ import { prisma } from '@/lib/db'
 import { syncXeroTransactions } from '@/lib/xero-sync'
 import { syncQuickBooksTransactions } from '@/lib/quickbooks-sync'
 import { generateForecast } from '@/lib/forecasting'
+import { syncRateLimiter, rateLimitResponse, getClientIdentifier } from '@/lib/rate-limit'
 
 // Manual sync endpoint - allows users to refresh their data
-export async function POST() {
+export async function POST(req: Request) {
   const { userId } = await auth()
 
   if (!userId) {
     return new NextResponse('Unauthorized', { status: 401 })
+  }
+
+  // Rate limit: 5 syncs per 5 minutes per user
+  const identifier = getClientIdentifier(req, userId)
+  const rateLimitResult = syncRateLimiter.check(identifier)
+  if (!rateLimitResult.success) {
+    return rateLimitResponse(rateLimitResult.reset)
   }
 
   try {

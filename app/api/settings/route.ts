@@ -1,11 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { z } from 'zod'
-
-const updateSettingsSchema = z.object({
-  cashBuffer: z.number().min(0).max(100000000).optional(), // Max £1M in pence
-})
+import { updateSettingsSchema, validateBody } from '@/lib/validation'
+import { apiRateLimiter, rateLimitResponse, getClientIdentifier } from '@/lib/rate-limit'
 
 export async function PATCH(req: Request) {
   const { userId } = await auth()
@@ -14,9 +11,20 @@ export async function PATCH(req: Request) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
+  // Rate limit
+  const identifier = getClientIdentifier(req, userId)
+  const rateLimitResult = apiRateLimiter.check(identifier)
+  if (!rateLimitResult.success) {
+    return rateLimitResponse(rateLimitResult.reset)
+  }
+
   try {
-    const body = await req.json()
-    const { cashBuffer } = updateSettingsSchema.parse(body)
+    // Validate input
+    const validation = await validateBody(req, updateSettingsSchema)
+    if (!validation.success) {
+      return new NextResponse(validation.error, { status: 400 })
+    }
+    const { cashBuffer, currency } = validation.data
 
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
@@ -30,16 +38,15 @@ export async function PATCH(req: Request) {
       where: { id: user.id },
       data: {
         ...(cashBuffer !== undefined && { cashBuffer }),
+        ...(currency !== undefined && { currency }),
       },
     })
 
     return NextResponse.json({
       cashBuffer: updatedUser.cashBuffer,
+      currency: updatedUser.currency,
     })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return new NextResponse('Invalid input', { status: 400 })
-    }
     console.error('Settings update error:', error)
     return new NextResponse('Failed to update settings', { status: 500 })
   }

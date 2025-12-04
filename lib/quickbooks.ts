@@ -1,14 +1,30 @@
 // @ts-expect-error intuit-oauth has no type declarations
 import OAuthClient from 'intuit-oauth'
 
-const oauthClient = new OAuthClient({
-  clientId: process.env.QUICKBOOKS_CLIENT_ID!,
-  clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET!,
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  redirectUri: process.env.QUICKBOOKS_REDIRECT_URI!,
-})
+// Lazy-load QuickBooks OAuth client to avoid errors at build time
+let oauthClientInstance: OAuthClient | null = null
 
-export { oauthClient }
+function getOAuthClient(): OAuthClient {
+  if (!oauthClientInstance) {
+    if (!process.env.QUICKBOOKS_CLIENT_ID || !process.env.QUICKBOOKS_CLIENT_SECRET) {
+      throw new Error('QuickBooks credentials not configured')
+    }
+    oauthClientInstance = new OAuthClient({
+      clientId: process.env.QUICKBOOKS_CLIENT_ID,
+      clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET,
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+      redirectUri: process.env.QUICKBOOKS_REDIRECT_URI || '',
+    })
+  }
+  return oauthClientInstance
+}
+
+// Backwards compatibility export
+export const oauthClient = new Proxy({} as OAuthClient, {
+  get(_target, prop) {
+    return getOAuthClient()[prop as keyof OAuthClient]
+  }
+})
 
 export function getQuickBooksClient(accessToken: string, realmId: string) {
   return {
@@ -21,7 +37,8 @@ export function getQuickBooksClient(accessToken: string, realmId: string) {
 }
 
 export async function refreshQuickBooksToken(refreshToken: string) {
-  const authResponse = await oauthClient.refreshUsingToken(refreshToken)
+  const client = getOAuthClient()
+  const authResponse = await client.refreshUsingToken(refreshToken)
   return authResponse.getJson()
 }
 

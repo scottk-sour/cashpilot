@@ -1,6 +1,24 @@
 import { Resend } from 'resend'
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-load Resend to avoid errors at build time with placeholder API keys
+let resendInstance: Resend | null = null
+
+function getResend(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey || apiKey === 're_placeholder' || apiKey.startsWith('placeholder')) {
+      throw new Error('Resend API key not configured')
+    }
+    resendInstance = new Resend(apiKey)
+  }
+  return resendInstance
+}
+
+export const resend = new Proxy({} as Resend, {
+  get(_target, prop) {
+    return getResend()[prop as keyof Resend]
+  }
+})
 
 export async function sendEmail({
   to,
@@ -12,7 +30,8 @@ export async function sendEmail({
   html: string
 }) {
   try {
-    const { data, error } = await resend.emails.send({
+    const client = getResend()
+    const { data, error } = await client.emails.send({
       from: 'CashPilot <alerts@cashpilot.app>',
       to,
       subject,
